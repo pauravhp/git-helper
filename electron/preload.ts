@@ -11,4 +11,6 @@ contextBridge.exposeInMainWorld("api", {
 		ipcRenderer.on("git:output", handler);
 		return () => ipcRenderer.removeListener("git:output", handler);
 	},
+
+	getRepoSnapshot: (cwd?: string) => ipcRenderer.invoke("git:snapshot", cwd),
 });

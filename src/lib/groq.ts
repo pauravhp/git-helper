@@ -14,6 +14,20 @@ export async function inferCommand(params: {
 		throw new Error("VITE_GROQ_API_KEY is not configured");
 	}
 
+	// Build rich repository context string
+	const stagedCount = repoSnapshot.stagedFiles?.length || 0;
+	const unstagedCount = repoSnapshot.unstagedFiles?.length || 0;
+	const untrackedCount = repoSnapshot.untrackedFiles?.length || 0;
+	const dirtyStatus = repoSnapshot.dirty ? "yes" : "no";
+
+	let upstreamInfo = "none";
+	if (repoSnapshot.upstream) {
+		upstreamInfo = repoSnapshot.upstream;
+		if (repoSnapshot.aheadBehind) {
+			upstreamInfo += ` (ahead ${repoSnapshot.aheadBehind.ahead}, behind ${repoSnapshot.aheadBehind.behind})`;
+		}
+	}
+
 	// Build system message
 	const systemMessage = `You are a Git command assistant. Your role is to:
 1. Convert natural language into safe, non-destructive git commands
@@ -30,7 +44,14 @@ export async function inferCommand(params: {
    }
 
 Repository context:
-- Current branch: ${repoSnapshot.currentBranch || "unknown"}
+- Current branch: ${
+		repoSnapshot.currentBranch || repoSnapshot.branch || "unknown"
+	}
+- Upstream: ${upstreamInfo}
+- Dirty working directory: ${dirtyStatus}
+- Staged files: ${stagedCount}
+- Unstaged files: ${unstagedCount}
+- Untracked files: ${untrackedCount}
 - Recent command history: ${
 		history.length > 0 ? history.slice(-5).join(", ") : "none"
 	}
