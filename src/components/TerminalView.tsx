@@ -111,29 +111,77 @@ export default function TerminalView() {
 			}
 
 			const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-			const recognizer = await model.createRecognizer();
+			const recognizer = new model.KaldiRecognizer(16000);
 			voskRecognizerRef.current = recognizer;
 
 			setIsListening(true);
 			write("\r\n🎙 Listening...");
 
-			// Simple 3-second recording for now
-			setTimeout(async () => {
-				const result = await recognizer.result();
+			// Listen for recognition results
+			recognizer.addEventListener("result", (event: any) => {
+				console.log("🎤 Recognition result event:", event);
+				console.log("🎤 Event detail:", event.detail);
+				console.log("🎤 Event detail.result:", event.detail.result);
+
+				const result = event.detail.result;
+
 				setIsListening(false);
 
 				if (result && result.text) {
 					const transcript = result.text.trim();
+					console.log("🎤 Transcribed text:", transcript);
 					write("\r\x1b[K");
 					inputBuf.current = transcript;
 					write(`$ git ${transcript}`);
 				} else {
+					console.log("🎤 No text found in result:", result);
 					write("\r\x1b[K\r\n⚠️  No speech detected.\r\n");
 					prompt();
 				}
 
-				recognizer.free();
+				recognizer.remove();
 				stream.getTracks().forEach((track) => track.stop());
+			});
+
+			// Set up MediaRecorder to capture audio
+			const mediaRecorder = new MediaRecorder(stream);
+			const audioChunks: Blob[] = [];
+
+			mediaRecorder.ondataavailable = (event) => {
+				if (event.data.size > 0) {
+					audioChunks.push(event.data);
+				}
+			};
+
+			mediaRecorder.onstop = async () => {
+				// Convert audio to PCM format for Vosk
+				const audioBlob = new Blob(audioChunks);
+				const arrayBuffer = await audioBlob.arrayBuffer();
+				const audioContext = new AudioContext({ sampleRate: 16000 });
+				const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+				console.log(
+					"🎤 Audio buffer duration:",
+					audioBuffer.duration,
+					"seconds"
+				);
+				console.log("🎤 Audio buffer length:", audioBuffer.length, "samples");
+
+				// Feed audio buffer to recognizer
+				recognizer.acceptWaveform(audioBuffer);
+
+				// Trigger final result retrieval
+				recognizer.retrieveFinalResult();
+
+				audioContext.close();
+			};
+
+			// Record for 3 seconds
+			mediaRecorder.start();
+			setTimeout(() => {
+				if (mediaRecorder.state !== "inactive") {
+					mediaRecorder.stop();
+				}
 			}, 3000);
 		} catch (error) {
 			console.error("❌ Failed to start recognition:", error);
@@ -146,7 +194,7 @@ export default function TerminalView() {
 	// Stop Vosk speech recognition
 	const stopListening = useCallback(() => {
 		if (voskRecognizerRef.current) {
-			voskRecognizerRef.current.free();
+			voskRecognizerRef.current.remove();
 			voskRecognizerRef.current = null;
 		}
 		setIsListening(false);
@@ -270,7 +318,7 @@ export default function TerminalView() {
 	useEffect(() => {
 		return () => {
 			if (voskRecognizerRef.current) {
-				voskRecognizerRef.current.free();
+				voskRecognizerRef.current.remove();
 			}
 		};
 	}, []);
