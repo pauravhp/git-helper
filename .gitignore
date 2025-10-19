@@ -19,3 +19,15 @@ Thumbs.db
 release/
 out/
 build/
+
+# Vosk models (downloaded / unpacked)
+public/models/
+models/
+vosk-model-*/
+
+# Caches / temp downloads
+*.zip
+*.tar*
+*.tgz
+.tmp/
+.cache/

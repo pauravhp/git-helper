@@ -10,5 +10,7 @@ declare global {
 			): Promise<{ code: number | null; output: string; err: string }>;
 			onGitOutput(cb: (data: string) => void): () => void;
 		};
+		webkitSpeechRecognition: typeof SpeechRecognition;
+		SpeechRecognition: typeof SpeechRecognition;
 	}
 }

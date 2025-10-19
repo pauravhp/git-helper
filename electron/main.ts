@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, session } from "electron";
 import { fileURLToPath } from "url";
 import path from "path";
 import { spawn } from "child_process";
@@ -9,14 +9,16 @@ const __dirname = path.dirname(__filename);
 let win: BrowserWindow | null = null;
 
 function createWindow() {
-	const isDev = !!process.env.VITE_DEV_SERVER_URL;
+	const isDev = process.env.NODE_ENV === "development";
+	const vitePort = 5123; // Match the port from Vite output
 
 	// In dev, Vite serves the renderer and vite-plugin-electron builds to dist-electron/
 	const preloadPath = isDev
-		? path.join(app.getAppPath(), "dist-electron", "preload.js")
-		: path.join(__dirname, "preload.js");
+		? path.join(app.getAppPath(), "dist-electron", "preload.cjs")
+		: path.join(__dirname, "preload.cjs");
 
 	console.log("Using preload:", preloadPath);
+	console.log("Development mode:", isDev);
 
 	win = new BrowserWindow({
 		width: 1100,
@@ -26,15 +28,30 @@ function createWindow() {
 			preload: preloadPath,
 			contextIsolation: true,
 			nodeIntegration: false,
-			sandbox: true,
+			sandbox: false, // Disable sandbox for speech recognition to work
 		},
 	});
 
-	const devUrl = process.env.VITE_DEV_SERVER_URL;
-	if (isDev && devUrl) {
+	// Handle permissions for microphone access
+	session.defaultSession.setPermissionRequestHandler(
+		(webContents, permission, callback) => {
+			console.log("Permission requested:", permission);
+			if (permission === "media") {
+				// Always grant media permission for speech recognition
+				callback(true);
+			} else {
+				callback(false);
+			}
+		}
+	);
+
+	if (isDev) {
+		const devUrl = `http://localhost:${vitePort}`;
+		console.log("Loading from Vite dev server:", devUrl);
 		win.loadURL(devUrl);
+		win.webContents.openDevTools(); // Auto-open DevTools in dev mode
 	} else {
-		win.loadFile(path.join(__dirname, "../dist/index.html"));
+		win.loadFile(path.join(__dirname, "../dist-react/index.html"));
 	}
 }
 

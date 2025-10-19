@@ -10,12 +10,13 @@
     "dev:electron": "npm run transpile:electron && cross-env NODE_ENV=development electron .",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "transpile:electron": "tsc --project electron/tsconfig.json && tsc --project electron/tsconfig.preload.json",
+    "transpile:electron": "tsc --project electron/tsconfig.json && tsc --project electron/tsconfig.preload.json && node -e \"require('fs').renameSync('dist-electron/preload.js', 'dist-electron/preload.cjs')\"",
     "dist:mac": "npm run transpile:electron && npm run build && electron-builder --mac --arm64"
   },
   "dependencies": {
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "vosk-browser": "^0.0.8",
     "xterm": "^5.3.0",
     "xterm-addon-fit": "^0.8.0"
   },
