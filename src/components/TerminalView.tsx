@@ -302,6 +302,7 @@ export default function TerminalView() {
 
 		writeln("Voice Git Coach — JS-only version");
 		writeln("Type a git subcommand (e.g. status, log, diff).");
+		writeln("Press Ctrl + Enter to start talking to Gitty.");
 		prompt();
 
 		const off = window.api.onGitOutput((data: string) => write(data));
