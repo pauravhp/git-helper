@@ -2,6 +2,14 @@ import { app, BrowserWindow, ipcMain, session } from "electron";
 import { fileURLToPath } from "url";
 import path from "path";
 import { spawn } from "child_process";
+console.log("[main] starting");
+console.log("[main] __dirname:", __dirname, " __filename:", __filename);
+
+import "./ipc-snapshot.js";
+
+
+console.log("[main] after importing ipc-snapshot");
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
