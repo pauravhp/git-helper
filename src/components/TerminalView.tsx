@@ -187,16 +187,23 @@ export default function TerminalView() {
 								write(`\r\n📝 Transcribed: "${fullTranscript}"\r\n`);
 								write("🤖 Processing with AI...\r\n");
 
-								// Call Groq LLM to infer git command
+								// Fetch real repository snapshot
 								try {
+									const repoSnapshot = await window.api.getRepoSnapshot();
+
+									// Check if we're in a git repository
+									if (!repoSnapshot.inRepo) {
+										write("\r\n[!] Not a git repository.\r\n");
+										prompt();
+										return;
+									}
+
+									console.log("📊 Repository snapshot:", repoSnapshot);
+
+									// Call Groq LLM to infer git command with real snapshot
 									const llmResult = await inferCommand({
 										utterance: fullTranscript,
-										repoSnapshot: {
-											currentBranch: "main", // TODO: Get actual branch
-											stagedFiles: [],
-											unstagedFiles: [],
-											untrackedFiles: [],
-										},
+										repoSnapshot,
 										history: [], // TODO: Track command history
 										learningMode: learningMode,
 									});

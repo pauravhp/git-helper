@@ -9,6 +9,9 @@ declare global {
 				cwd?: string
 			): Promise<{ code: number | null; output: string; err: string }>;
 			onGitOutput(cb: (data: string) => void): () => void;
+			getRepoSnapshot(
+				cwd?: string
+			): Promise<import("../shared/types").RepoSnapshot>;
 		};
 		webkitSpeechRecognition: typeof SpeechRecognition;
 		SpeechRecognition: typeof SpeechRecognition;

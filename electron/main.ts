@@ -2,6 +2,10 @@ import { app, BrowserWindow, ipcMain, session } from "electron";
 import { fileURLToPath } from "url";
 import path from "path";
 import { spawn } from "child_process";
+import { registerSnapshotHandler } from "./ipc-snapshot.js";
+
+// Register IPC handlers
+registerSnapshotHandler();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
