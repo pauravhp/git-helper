@@ -13,4 +13,12 @@ declare global {
 		webkitSpeechRecognition: typeof SpeechRecognition;
 		SpeechRecognition: typeof SpeechRecognition;
 	}
+
+	interface ImportMetaEnv {
+		readonly VITE_GROQ_API_KEY: string;
+	}
+
+	interface ImportMeta {
+		readonly env: ImportMetaEnv;
+	}
 }
