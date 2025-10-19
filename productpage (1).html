@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gitty — Your Voice-Controlled Git Terminal</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Consolas', monospace;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: radial-gradient(circle at top, #0b0c10 0%, #000 100%);
+      color: #e0e0e0;
+      overflow-x: hidden;
+    }
+
+    section, header {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 3rem;
+      color: #66fcf1;
+      text-shadow: 0 0 20px #45a29e;
+    }
+
+    header p {
+      font-size: 1.2rem;
+      margin-top: 10px;
+      color: #c5c6c7;
+      max-width: 600px;
+    }
+
+    .btn {
+      display: inline-block;
+      margin-top: 25px;
+      padding: 12px 28px;
+      border: 2px solid #45a29e;
+      border-radius: 6px;
+      text-decoration: none;
+      color: #66fcf1;
+      font-weight: bold;
+      transition: all 0.3s ease;
+    }
+
+    .btn:hover {
+      background: #45a29e;
+      color: #000;
+      box-shadow: 0 0 15px #66fcf1;
+    }
+
+    .terminal {
+      max-width: 800px;
+      background: rgba(10, 10, 10, 0.95);
+      border-radius: 12px;
+      box-shadow: 0 0 20px #0bffdd44;
+      overflow: hidden;
+    }
+
+    .terminal-header {
+      background: #1f2833;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+    }
+
+    .dot {
+      height: 12px;
+      width: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    .dot.red { background: #ff5f56; }
+    .dot.yellow { background: #ffbd2e; }
+    .dot.green { background: #27c93f; }
+
+    .terminal-body {
+      padding: 20px;
+      color: #66fcf1;
+      font-size: 1rem;
+      min-height: 220px;
+      text-align: center;
+    }
+
+    .cursor {
+      display: inline-block;
+      width: 10px;
+      background: #66fcf1;
+      animation: blink 1s step-start infinite;
+      margin-left: 3px;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
+    .soundwave {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .bar {
+      width: 4px;
+      height: 20px;
+      margin: 0 3px;
+      background: #66fcf1;
+      border-radius: 3px;
+      animation: wave 1s infinite ease-in-out;
+    }
+
+    .bar:nth-child(2) { animation-delay: 0.2s; }
+    .bar:nth-child(3) { animation-delay: 0.4s; }
+    .bar:nth-child(4) { animation-delay: 0.6s; }
+    .bar:nth-child(5) { animation-delay: 0.8s; }
+
+    @keyframes wave {
+      0%, 100% { transform: scaleY(0.3); }
+      50% { transform: scaleY(1.5); }
+    }
+
+    .problem, .solution, .tech-stack, .flow {
+      background: rgba(20, 20, 20, 0.9);
+      border-radius: 12px;
+      max-width: 800px;
+      margin: 0 auto;
+      box-shadow: 0 0 20px #45a29e33;
+      padding: 40px;
+    }
+
+    h2 {
+      color: #66fcf1;
+      text-shadow: 0 0 15px #45a29e;
+      margin-bottom: 20px;
+    }
+
+    p {
+      font-size: 1.1rem;
+      color: #c5c6c7;
+      line-height: 1.6;
+    }
+
+    .stack-list {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .stack-item {
+      border: 1px solid #45a29e;
+      border-radius: 8px;
+      padding: 10px 18px;
+      color: #c5c6c7;
+      transition: all 0.3s;
+    }
+
+    .stack-item:hover {
+      background: #45a29e;
+      color: #000;
+      transform: scale(1.05);
+    }
+
+    .flow-steps {
+      color: #c5c6c7;
+      font-size: 1.1rem;
+      line-height: 1.8;
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 0.9rem;
+      color: #777;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- HERO -->
+  <header>
+    <h1>Gitty</h1>
+    <p>Voice-controlled Git terminal to eliminate developer anxiety.  
+       Say goodbye to “Did I just break main?” forever.</p>
+    <a href="#terminal-section" class="btn">See It in Action</a>
+  </header>
+
+  <!-- TERMINAL -->
+  <section id="terminal-section">
+    <div class="terminal">
+      <div class="terminal-header">
+        <div class="dot red"></div>
+        <div class="dot yellow"></div>
+        <div class="dot green"></div>
+        <span style="color: #c5c6c7; margin-left: 10px;">bash — gitty</span>
+      </div>
+      <div class="terminal-body" id="terminal">
+        <p style="color:#c5c6c7;">🎙️ You: “Gitty, create a new branch feature-login”</p>
+        <p id="output"></p>
+        <span class="cursor"></span>
+      </div>
+    </div>
+
+    <div class="soundwave">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    </div>
+  </section>
+
+  <!-- PROBLEM -->
+  <section id="problem">
+    <div class="problem">
+      <h2>The Problem — Git Anxiety</h2>
+      <p>
+        Every software engineer has felt that gut drop before typing <code>git push</code>.  
+        One wrong command, and your <code>main</code> could break.  
+        You Google “how to undo a merge” again. You copy a StackOverflow answer hoping nothing explodes.
+      </p>
+      <p style="margin-top:20px; color:#66fcf1;">We’ve all been afraid of Git — until Gitty.</p>
+    </div>
+  </section>
+
+  <!-- SOLUTION -->
+  <section id="solution">
+    <div class="solution">
+      <h2>The Solution — Meet Gitty</h2>
+      <p>
+        Gitty is a voice-activated terminal built with Electron and Node.js.  
+        It listens, understands, and executes your Git commands safely.  
+        You speak it. It does it — no typos, no fear.
+      </p>
+      <a href="#flow" class="btn">See How It Works</a>
+    </div>
+  </section>
+
+  <!-- FLOW -->
+  <section id="flow">
+    <div class="flow">
+      <h2>⚙️ Flow of the App</h2>
+      <div class="flow-steps">
+        <p>1️⃣ Open <strong>Gitty</strong></p>
+        <p>2️⃣ Press <strong>Ctrl + Enter</strong></p>
+        <p>3️⃣ Gitty shows the command and sums it up in one line </p>
+        <p>4️⃣ Gitty shows the command</p>
+        <p>5️⃣ Approve the Action ✅</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- TECH STACK -->
+  <section id="stack">
+    <div class="tech-stack">
+      <h2>🧩 Tech Stack</h2>
+      <div class="stack-list">
+        <div class="stack-item">NodeJS</div>
+        <div class="stack-item">TypeScript</div>
+        <div class="stack-item">Vosk</div>
+        <div class="stack-item">Groq</div>
+        <div class="stack-item">HTML</div>
+        <div class="stack-item">Electron</div>
+        <div class="stack-item">Vite</div>
+        <div class="stack-item">React</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Built for UVEC Hackathon 2025 • Gitty — Voice meets Git</p>
+  </footer>
+
+  <script>
+    const output = document.getElementById("output");
+    const text = "💻 Gitty: Switched to a new branch 'feature-login'";
+    let i = 0;
+    function type() {
+      if (i < text.length) {
+        output.innerHTML += text.charAt(i);
+        i++;
+        setTimeout(type, 40);
+      }
+    }
+    window.onload = () => setTimeout(type, 1000);
+  </script>
+</body>
+</html>
