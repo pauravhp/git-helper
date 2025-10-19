@@ -4,6 +4,7 @@ import { FitAddon } from "xterm-addon-fit";
 import "xterm/css/xterm.css";
 import CommandConfirmationOverlay from "./CommandConfirmationOverlay";
 import { createModel } from "vosk-browser";
+import { inferCommand } from "../lib/groq";
 
 function splitArgs(input: string): string[] {
 	const out: string[] = [];
@@ -98,7 +99,7 @@ export default function TerminalView() {
 		}
 	};
 
-	// Start Vosk speech recognition
+	// Start Vosk speech recognition with VAD (Voice Activity Detection)
 	const startListening = useCallback(async () => {
 		if (isListening) return;
 
@@ -110,86 +111,157 @@ export default function TerminalView() {
 				return;
 			}
 
-			const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+			const stream = await navigator.mediaDevices.getUserMedia({
+				audio: {
+					echoCancellation: true,
+					noiseSuppression: true,
+					sampleRate: 16000,
+				},
+			});
+
 			const recognizer = new model.KaldiRecognizer(16000);
 			voskRecognizerRef.current = recognizer;
 
 			setIsListening(true);
-			write("\r\n🎙 Listening...");
+			write("\r\n🎙 Listening... (speak your command)");
 
-			// Listen for recognition results
-			recognizer.addEventListener("result", (event: any) => {
-				console.log("🎤 Recognition result event:", event);
-				console.log("🎤 Event detail:", event.detail);
-				console.log("🎤 Event detail.result:", event.detail.result);
+			let fullTranscript = "";
+			let silenceTimeout: number | null = null;
+			let audioContext: AudioContext | null = null;
+			let scriptProcessor: ScriptProcessorNode | null = null;
+			const SILENCE_DURATION = 2000; // 2 seconds of silence to stop
 
-				const result = event.detail.result;
-
-				setIsListening(false);
-
-				if (result && result.text) {
-					const transcript = result.text.trim();
-					console.log("🎤 Transcribed text:", transcript);
-					write("\r\x1b[K");
-					inputBuf.current = transcript;
-					write(`$ git ${transcript}`);
-				} else {
-					console.log("🎤 No text found in result:", result);
-					write("\r\x1b[K\r\n⚠️  No speech detected.\r\n");
-					prompt();
+			// Listen for partial results (real-time transcription)
+			recognizer.addEventListener("partialresult", (event: any) => {
+				const partial = event.detail.result?.partial || "";
+				if (partial) {
+					console.log("🎤 Partial result:", partial);
+					// Update terminal with partial result (optional visual feedback)
+					// Clear any existing silence timeout since user is still speaking
+					if (silenceTimeout) {
+						clearTimeout(silenceTimeout);
+						silenceTimeout = null;
+					}
 				}
-
-				recognizer.remove();
-				stream.getTracks().forEach((track) => track.stop());
 			});
 
-			// Set up MediaRecorder to capture audio
-			const mediaRecorder = new MediaRecorder(stream);
-			const audioChunks: Blob[] = [];
+			// Listen for final recognition results
+			recognizer.addEventListener("result", async (event: any) => {
+				console.log("🎤 Recognition result event:", event);
+				const result = event.detail.result;
 
-			mediaRecorder.ondataavailable = (event) => {
-				if (event.data.size > 0) {
-					audioChunks.push(event.data);
+				if (result && result.text) {
+					const newText = result.text.trim();
+					if (newText) {
+						fullTranscript = fullTranscript
+							? `${fullTranscript} ${newText}`
+							: newText;
+						console.log("🎤 Updated transcript:", fullTranscript);
+
+						// Reset silence timer - user spoke
+						if (silenceTimeout) {
+							clearTimeout(silenceTimeout);
+						}
+
+						// Start new silence timer
+						silenceTimeout = setTimeout(async () => {
+							// User has stopped speaking for SILENCE_DURATION
+							console.log("🎤 Silence detected, finalizing...");
+							setIsListening(false);
+
+							// Clean up audio processing
+							if (scriptProcessor) {
+								scriptProcessor.disconnect();
+								scriptProcessor = null;
+							}
+							if (audioContext) {
+								audioContext.close();
+								audioContext = null;
+							}
+
+							recognizer.remove();
+							stream.getTracks().forEach((track) => track.stop());
+
+							if (fullTranscript) {
+								write("\r\x1b[K");
+								write(`\r\n📝 Transcribed: "${fullTranscript}"\r\n`);
+								write("🤖 Processing with AI...\r\n");
+
+								// Call Groq LLM to infer git command
+								try {
+									const llmResult = await inferCommand({
+										utterance: fullTranscript,
+										repoSnapshot: {
+											currentBranch: "main", // TODO: Get actual branch
+											stagedFiles: [],
+											unstagedFiles: [],
+											untrackedFiles: [],
+										},
+										history: [], // TODO: Track command history
+										learningMode: learningMode,
+									});
+
+									console.log("🤖 LLM result:", llmResult);
+
+									if (llmResult.needs_clarification) {
+										write(`\r\n❓ ${llmResult.clarification_question}\r\n`);
+										prompt();
+									} else {
+										write(`\r\n💡 ${llmResult.explanation}\r\n`);
+										// Extract git subcommand (remove "git " prefix if present)
+										const gitCommand = llmResult.command
+											.replace(/^git\s+/, "")
+											.trim();
+										inputBuf.current = gitCommand;
+										write(`$ git ${gitCommand}`);
+										// Trigger confirmation overlay
+										pendingCommandRef.current = gitCommand;
+										setPendingCommand(gitCommand);
+									}
+								} catch (error) {
+									console.error("❌ LLM inference failed:", error);
+									write(
+										`\r\n⚠️  AI processing failed: ${
+											error instanceof Error ? error.message : "Unknown error"
+										}\r\n`
+									);
+									prompt();
+								}
+							} else {
+								write("\r\x1b[K\r\n⚠️  No speech detected.\r\n");
+								prompt();
+							}
+						}, SILENCE_DURATION);
+					}
+				}
+			});
+
+			// Set up AudioContext and ScriptProcessor for real-time audio processing
+			audioContext = new AudioContext({ sampleRate: 16000 });
+			const source = audioContext.createMediaStreamSource(stream);
+
+			// Use ScriptProcessor to get raw PCM audio data
+			const bufferSize = 4096;
+			scriptProcessor = audioContext.createScriptProcessor(bufferSize, 1, 1);
+
+			scriptProcessor.onaudioprocess = (e) => {
+				// Feed the AudioBuffer directly to Vosk recognizer
+				try {
+					recognizer.acceptWaveform(e.inputBuffer);
+				} catch (error) {
+					console.error("❌ Error feeding audio to recognizer:", error);
 				}
 			};
 
-			mediaRecorder.onstop = async () => {
-				// Convert audio to PCM format for Vosk
-				const audioBlob = new Blob(audioChunks);
-				const arrayBuffer = await audioBlob.arrayBuffer();
-				const audioContext = new AudioContext({ sampleRate: 16000 });
-				const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-				console.log(
-					"🎤 Audio buffer duration:",
-					audioBuffer.duration,
-					"seconds"
-				);
-				console.log("🎤 Audio buffer length:", audioBuffer.length, "samples");
-
-				// Feed audio buffer to recognizer
-				recognizer.acceptWaveform(audioBuffer);
-
-				// Trigger final result retrieval
-				recognizer.retrieveFinalResult();
-
-				audioContext.close();
-			};
-
-			// Record for 3 seconds
-			mediaRecorder.start();
-			setTimeout(() => {
-				if (mediaRecorder.state !== "inactive") {
-					mediaRecorder.stop();
-				}
-			}, 3000);
+			source.connect(scriptProcessor);
+			scriptProcessor.connect(audioContext.destination);
 		} catch (error) {
 			console.error("❌ Failed to start recognition:", error);
 			write("\r\n⚠️  Microphone access denied or error occurred.\r\n");
 			prompt();
 			setIsListening(false);
 		}
-	}, [isListening]);
+	}, [isListening, learningMode]);
 
 	// Stop Vosk speech recognition
 	const stopListening = useCallback(() => {
@@ -289,16 +361,13 @@ export default function TerminalView() {
 				e.metaKey
 			);
 
-			// Ctrl+Space to toggle speech recognition
-			if (e.ctrlKey && e.code === "Space") {
-				console.log("🎯 Ctrl+Space detected!");
+			// Ctrl+Enter to start speech recognition
+			if (e.ctrlKey && e.code === "Enter") {
+				console.log("🎯 Ctrl+Enter detected!");
 				e.preventDefault();
 				e.stopPropagation();
 
-				if (isListening) {
-					console.log("🛑 Stopping listening...");
-					stopListening();
-				} else {
+				if (!isListening) {
 					console.log("🎤 Starting listening...");
 					startListening();
 				}
