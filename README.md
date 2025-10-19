@@ -1,239 +1,184 @@
-# Git Helper - Electron App
+# 🎙️ Gitty: Your Voice-Controlled Git Terminal
 
-An Electron-based Git helper application built with React, TypeScript, and Vite.
+> **"A calmer, safer, and more explainable way to use Git — powered by voice and AI."**
 
-## Prerequisites
+---
 
-Before setting up the project, ensure you have the following installed:
+## 🧭 Overview
 
-### Required Software
+**Gitty** is a desktop application that transforms the Git experience into a **voice-driven, anxiety-free workflow**.  
+Built with **Electron, React, and TypeScript**, it combines **Speech Recognition**, a **Groq LLM**, and a **real PTY terminal** to help developers perform Git operations using natural language — with full transparency and zero risk.
 
-1. **Node.js** (v18 or higher)
+Simply **speak your intent**:
 
-   - Download from: https://nodejs.org/
-   - Verify installation: `node --version` and `npm --version`
+> “Create a new branch for the login feature.”
 
-2. **Git**
+…and the app:
 
-   - Download from: https://git-scm.com/
-   - Verify installation: `git --version`
+1. Transcribes your speech.
+2. Uses an LLM (via **Groq API**) to interpret intent.
+3. Takes a **live snapshot of your repository** (branch, upstream, changes, etc.).
+4. Displays the **exact Git command** and a **plain-English explanation**.
+5. Waits for your confirmation — **you stay in control**.
 
-3. **Code Editor** (recommended)
-   - VS Code: https://code.visualstudio.com/
+No destructive actions.  
+No blind execution.  
+No Git anxiety.
 
-## Setup Instructions
+---
 
-### 1. Clone the Repository
+## 💡 Why This Matters
 
-```bash
-git clone https://github.com/pauravhp/git-helper.git
-cd git-helper
+Even experienced developers feel a twinge of stress before running high-impact Git commands.  
+Syntax errors, missing upstreams, or accidental resets can have serious consequences in shared codebases.
+
+The Voice-Controlled Git Coach helps professionals:
+
+- **Understand** what each command will do before running it.
+- **Trust** that actions are safe and explainable.
+- **Learn** the rationale behind commands over time.
+- **Reduce cognitive load** under time pressure.
+
+---
+
+## 👤 Target Persona
+
+**Alex Chen** — Mid-level software engineer, comfortable with Git but often juggling multiple branches and deadlines.  
+He knows Git inside out, but that small voice of doubt — _“Am I about to break something?”_ — never quite goes away.  
+This app quiets that voice by showing him exactly what will happen before anything runs.
+
+---
+
+## 🧩 Key Features
+
+| Feature                           | Description                                                                                                    |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| 🎙️ **Voice-to-Git**               | Speak natural commands like “commit my changes” or “undo the last commit.”                                     |
+| 🧠 **Context-Aware AI**           | Uses live repo snapshots (branch, upstream, ahead/behind, uncommitted changes) to interpret intent accurately. |
+| 💬 **Plain-English Explanations** | Every command is accompanied by a short, human-readable explanation of its impact.                             |
+| ✅ **Pre-flight Confirmation**    | The app never executes automatically — you always see the command first.                                       |
+| 🧱 **Real Terminal Core**         | Built on `child_processes` and `xterm.js`; runs genuine shell commands, not simulations.                       |
+| 🧭 **Minimalist UI**              | A clean terminal interface with only essential overlays: `Idle / Listening / Parsing / Ready`.                 |
+
+---
+
+## 🧠 Architecture
+
+```
+User Speaks
+   ↓
+Vosk (Speech-to-Text)
+   ↓
+Repo Snapshot Collector (branch, upstream, status, ahead/behind)
+   ↓
+Groq LLM (Intent + JSON Response)
+   ↓
+Command Validation (One line explanation)
+   ↓
+Confirmation Overlay (Command + Explanation)
+   ↓
+User Confirms → executes command → Output streams to xterm.js
 ```
 
-### 2. Install Dependencies
+---
+
+## ⚙️ Tech Stack
+
+| Layer              | Technology                       |
+| ------------------ | -------------------------------- |
+| Desktop Shell      | **Electron**                     |
+| Frontend           | **React + Vite + TypeScript**    |
+| Terminal           | **xterm.js**                     |
+| AI Engine          | **Groq LLM API (Llama 3.3 70B)** |
+| Speech Recognition | **Vosk**                         |
+| Validation         | **Zod + jsonrepair**             |
+| Styling            | **Tailwind CSS**                 |
+| Packaging          | **electron-builder**             |
+
+---
+
+## ⚙️ Installation & Setup
+
+### Prerequisites
+
+- **Node.js:** ≥ 22.12 (or 20.19 LTS)
+- **npm**
+- **Groq API Key** (obtain from [console.groq.com](https://console.groq.com))
+- Only Possible on MacOS :(
+
+### Clone & Install
 
 ```bash
+git clone git@github.com:pauravhp/git-helper.git
+cd git-helper
 npm install
 ```
 
-This will install all required packages including:
+### Electron Compilation
 
-- Electron
-- React & TypeScript
-- Vite (build tool)
-- All development dependencies
+```bash
+npm run transpile:electron
+```
 
-### 3. Development Setup
+### Build Production Executable
 
-The project uses a dual TypeScript configuration:
+```bash
+npm run dist:mac     # macOS
+```
 
-- Main process: ESM modules
-- Preload script: CommonJS modules (required by Electron)
+### Add Environment Variables
 
-## Running the Application
+Create a `.env` file in the project root:
 
-### Development Mode (Recommended for development)
+```bash
+GROQ_API_KEY=your_api_key_here
+```
+
+### Run in Development
 
 ```bash
 npm run dev
 ```
 
-This command:
+The packaged app will appear in `/dist`.
 
-- Starts the React development server (Vite)
-- Compiles TypeScript files for Electron
-- Launches the Electron app with hot reload
-- Enables Chrome DevTools for debugging
+---
 
-### Alternative Development Commands
+## 🔐 Safety Philosophy
 
-```bash
-# Run only the React dev server
-npm run dev:react
+- **Human confirmation required:** Every command requires user consent.
+- **Explain before execute:** Transparency first, automation second.
 
-# Compile Electron TypeScript files
-npm run transpile:electron
+---
 
-# Run only the Electron app (after transpilation)
-npm run dev:electron
-```
+## 🚀 Roadmap
 
-## Building for Distribution
+- [ ] Add fine-grained permission levels for org/team settings.
+- [ ] Integrate with VS Code as an extension.
+- [ ] Offline LLM fallback (e.g., Mistral 7B quantized).
+- [ ] Multi-language STT support.
+- [ ] Advanced “scenario explanations” for educational use.
 
-### Windows Distribution
+---
 
-```bash
-npm run dist:win
-```
+## 👥 Contributors
 
-**Note:** You'll need to add this script to package.json:
+**Paurav Hosur Param**
+**Abhay Anoop C**
+**Vivek Reddy**
 
-```json
-{
-	"scripts": {
-		"dist:win": "npm run transpile:electron && npm run build && electron-builder --win"
-	}
-}
-```
+---
 
-### Production Build (Web version)
+## 🧭 Vision
 
-```bash
-npm run build
-npm run preview
-```
+Git should feel empowering — not intimidating.  
+The Voice-Controlled Gitty brings **clarity, confidence, and calm** to one of the most essential tools in software development.
 
-## Troubleshooting
+> “See before you run.”  
+> **Understand Git. Reduce anxiety. Stay in control.**
 
-### Common Windows Issues
+---
 
-1. **Permission Errors**
+## 🪪 License
 
-   - Run Command Prompt or PowerShell as Administrator
-   - Ensure antivirus isn't blocking Node.js/npm
-
-2. **Long Path Issues**
-
-   - Enable long paths in Windows 10/11:
-     ```cmd
-     # Run as Administrator
-     reg add HKLM\SYSTEM\CurrentControlSet\Control\FileSystem /v LongPathsEnabled /t REG_DWORD /d 1
-     ```
-
-3. **Node.js Version Issues**
-
-   - Use Node Version Manager for Windows (nvm-windows)
-   - Download from: https://github.com/coreybutler/nvm-windows
-
-4. **Build Errors**
-   - Clear npm cache: `npm cache clean --force`
-   - Delete node_modules and reinstall: `rm -rf node_modules && npm install`
-   - Ensure Windows Build Tools are installed: `npm install --global windows-build-tools`
-
-### Environment Variables
-
-For development, you may need to set:
-
-```bash
-# Windows Command Prompt
-set NODE_ENV=development
-
-# Windows PowerShell
-$env:NODE_ENV="development"
-```
-
-## Project Structure
-
-```
-git-helper/
-├── electron/                 # Electron main process files
-│   ├── main.ts              # Main Electron process (ESM)
-│   ├── preload.ts           # Preload script (CommonJS)
-│   ├── tsconfig.json        # TypeScript config for main process
-│   └── tsconfig.preload.json # TypeScript config for preload
-├── src/                     # React application
-│   ├── components/          # React components
-│   ├── types/              # TypeScript type definitions
-│   └── main.tsx            # React entry point
-├── dist-electron/          # Compiled Electron files
-├── dist-react/            # Built React application
-└── package.json           # Dependencies and scripts
-```
-
-## Available Scripts
-
-| Command                      | Description                                      |
-| ---------------------------- | ------------------------------------------------ |
-| `npm run dev`                | Start development mode with hot reload           |
-| `npm run build`              | Build React app for production                   |
-| `npm run transpile:electron` | Compile Electron TypeScript files                |
-| `npm run dist:mac`           | Build macOS distribution                         |
-| `npm run dist:win`           | Build Windows distribution (add to package.json) |
-
-## Technologies Used
-
-- **Electron**: Desktop app framework
-- **React**: UI framework
-- **TypeScript**: Type safety
-- **Vite**: Build tool and dev server
-- **xterm.js**: Terminal emulator component
-
-## Contributing
-
-1. Create a new branch for your feature
-2. Make your changes
-3. Test thoroughly on your platform
-4. Submit a pull request
-
-## Support
-
-For Windows-specific issues, check:
-
-- Node.js and npm are properly installed
-- Windows Defender/antivirus isn't blocking the application
-- You have the latest Windows updates installed
-  tseslint.configs.stylisticTypeChecked,
-
-        // Other configs...
-      ],
-      languageOptions: {
-        parserOptions: {
-          project: ['./tsconfig.node.json', './tsconfig.app.json'],
-          tsconfigRootDir: import.meta.dirname,
-        },
-        // other options...
-      },
-
-  },
-  ])
-
-````
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-````
+MIT © 2025 Voice-Controlled Git Coach Team
