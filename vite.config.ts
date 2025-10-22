@@ -45,4 +45,5 @@ export default defineConfig({
 		port: 5123,
 		strictPort: true,
 	},
+	assetsInclude: ["**/*.ppn", "**/*.pv", "**/*.wasm"],
 });

@@ -53,7 +53,8 @@ This app quiets that voice by showing him exactly what will happen before anythi
 
 | Feature                           | Description                                                                                                    |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| 🎙️ **Voice-to-Git**               | Speak natural commands like “commit my changes” or “undo the last commit.”                                     |
+| 🎙️ **Voice-to-Git**               | Speak natural commands like "commit my changes" or "undo the last commit."                                     |
+| 🔊 **Wake Word Detection**        | Say "Hey Gitty" to activate voice control hands-free (optional, requires Porcupine access key).                |
 | 🧠 **Context-Aware AI**           | Uses live repo snapshots (branch, upstream, ahead/behind, uncommitted changes) to interpret intent accurately. |
 | 💬 **Plain-English Explanations** | Every command is accompanied by a short, human-readable explanation of its impact.                             |
 | ✅ **Pre-flight Confirmation**    | The app never executes automatically — you always see the command first.                                       |
@@ -90,7 +91,8 @@ User Confirms → executes command → Output streams to xterm.js
 | Frontend           | **React + Vite + TypeScript**    |
 | Terminal           | **xterm.js**                     |
 | AI Engine          | **Groq LLM API (Llama 3.3 70B)** |
-| Speech Recognition | **Vosk**                         |
+| Speech Recognition | **Vosk (offline STT)**           |
+| Wake Word          | **Porcupine (Picovoice)**        |
 | Validation         | **Zod + jsonrepair**             |
 | Styling            | **Tailwind CSS**                 |
 | Packaging          | **electron-builder**             |
@@ -104,6 +106,7 @@ User Confirms → executes command → Output streams to xterm.js
 - **Node.js:** ≥ 22.12 (or 20.19 LTS)
 - **npm**
 - **Groq API Key** (obtain from [console.groq.com](https://console.groq.com))
+- **Porcupine Access Key** (optional, for wake word detection from [console.picovoice.ai](https://console.picovoice.ai))
 - Only Possible on MacOS :(
 
 ### Clone & Install
@@ -112,6 +115,12 @@ User Confirms → executes command → Output streams to xterm.js
 git clone git@github.com:pauravhp/git-helper.git
 cd git-helper
 npm install
+```
+
+**Note:** `npm install` automatically downloads the Vosk speech recognition model (~39 MB). If you need to manually download it later:
+
+```bash
+npm run setup:vosk
 ```
 
 ### Electron Compilation
@@ -128,10 +137,15 @@ npm run dist:mac     # macOS
 
 ### Add Environment Variables
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project root (or copy from `.env.example`):
 
 ```bash
-GROQ_API_KEY=your_api_key_here
+# Required: Groq API for LLM inference
+VITE_GROQ_API_KEY=your_groq_api_key_here
+
+# Optional: Porcupine wake word detection
+# Without this, you can still use Ctrl+Enter to activate voice
+VITE_PORCUPINE_ACCESS_KEY=your_porcupine_access_key_here
 ```
 
 ### Run in Development
@@ -144,6 +158,27 @@ The packaged app will appear in `/dist`.
 
 ---
 
+## 🎤 Voice Control Usage
+
+### Manual Activation (Ctrl+Enter)
+
+1. Press **Ctrl+Enter** anywhere in the terminal
+2. Speak your Git command when you see "🎙 Listening..."
+3. Wait for the 2-second silence detection to complete
+4. Review the suggested command and confirm/cancel
+
+### Wake Word Activation (Optional)
+
+1. Press **Ctrl+Shift+G** to arm the wake word detector
+2. You'll see a green indicator: 🎤 "Hey Gitty" armed
+3. Say **"Hey Gitty"** to activate voice listening
+4. A chime will play and the same listening flow starts
+5. Press **Ctrl+Shift+G** again to disarm
+
+**Note:** Wake word requires `VITE_PORCUPINE_ACCESS_KEY` in your `.env` file. Get a free key from [Picovoice Console](https://console.picovoice.ai). Look into public/porcupine/README.md for more details.
+
+---
+
 ## 🔐 Safety Philosophy
 
 - **Human confirmation required:** Every command requires user consent.
@@ -153,20 +188,18 @@ The packaged app will appear in `/dist`.
 
 ## 🚀 Roadmap
 
-- [ ] Add fine-grained permission levels for org/team settings.
-- [ ] Integrate with VS Code as an extension.
-- [ ] Offline LLM fallback (e.g., Mistral 7B quantized).
 - [ ] Multi-language STT support.
 - [ ] Advanced “scenario explanations” for educational use.
+- [ ] Wake word "Hey Gitty"
 
 ---
 
 ## 👥 Contributors
 
-**Paurav Hosur Param**
-**Abhay Anoop C**
-**Vivek Reddy**
-**Daniaal Tahir Mahmood**
+- **Paurav Hosur Param**
+- **Abhay Anoop C**
+- **Vivek Reddy**
+- **Daniaal Tahir Mahmood**
 
 ---
 
@@ -182,4 +215,4 @@ The Voice-Controlled Gitty brings **clarity, confidence, and calm** to one of th
 
 ## 🪪 License
 
-MIT © 2025 Voice-Controlled Git Coach Team
+MIT © 2025 Team Gitty

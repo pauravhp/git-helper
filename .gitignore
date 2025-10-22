@@ -5,6 +5,7 @@ dist-electron/
 dist-react/
 .vite/
 *.log
+package-lock.json
 
 # Env & OS cruft
 .env
@@ -25,6 +26,10 @@ build/
 public/models/
 models/
 vosk-model-*/
+
+# Porcupine files
+public/porcupine/*.ppn
+public/porcupine/*.pv
 
 # Caches / temp downloads
 *.zip
