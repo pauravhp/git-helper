@@ -30,6 +30,7 @@
       justify-content: center;
       padding: 60px 20px;
       text-align: center;
+      position: relative;
     }
 
     header h1 {
@@ -61,6 +62,13 @@
       background: #45a29e;
       color: #000;
       box-shadow: 0 0 15px #66fcf1;
+    }
+
+    .next-btn {
+      position: absolute;
+      bottom: 30px;
+      font-size: 0.9rem;
+      opacity: 0.8;
     }
 
     .terminal {
@@ -190,25 +198,30 @@
       font-size: 0.9rem;
       color: #777;
     }
+
+    .team {
+      margin-top: 40px;
+      color: #66fcf1;
+      font-size: 1rem;
+      letter-spacing: 1px;
+    }
   </style>
 </head>
 
 <body>
   <!-- HERO -->
-  <header>
+  <header id="top">
     <h1>Gitty</h1>
-    <p>Voice-controlled Git terminal to eliminate developer anxiety.  
-       Say goodbye to “Did I just break main?” forever.</p>
+    <p>Voice-controlled Git terminal to eliminate developer anxiety. Say goodbye to “Did I just break main?” forever.</p>
     <a href="#terminal-section" class="btn">See It in Action</a>
+    <a href="#terminal-section" class="btn next-btn">Next ↓</a>
   </header>
 
   <!-- TERMINAL -->
   <section id="terminal-section">
     <div class="terminal">
       <div class="terminal-header">
-        <div class="dot red"></div>
-        <div class="dot yellow"></div>
-        <div class="dot green"></div>
+        <div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div>
         <span style="color: #c5c6c7; margin-left: 10px;">bash — gitty</span>
       </div>
       <div class="terminal-body" id="terminal">
@@ -221,6 +234,8 @@
     <div class="soundwave">
       <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
     </div>
+
+    <a href="#problem" class="btn next-btn">Next ↓</a>
   </section>
 
   <!-- PROBLEM -->
@@ -228,12 +243,13 @@
     <div class="problem">
       <h2>The Problem — Git Anxiety</h2>
       <p>
-        Every software engineer has felt that gut drop before typing <code>git push</code>.  
-        One wrong command, and your <code>main</code> could break.  
+        Every software engineer has felt that gut drop before typing git push.
+        One wrong command, and your main could break.
         You Google “how to undo a merge” again. You copy a StackOverflow answer hoping nothing explodes.
       </p>
       <p style="margin-top:20px; color:#66fcf1;">We’ve all been afraid of Git — until Gitty.</p>
     </div>
+    <a href="#solution" class="btn next-btn">Next ↓</a>
   </section>
 
   <!-- SOLUTION -->
@@ -241,12 +257,12 @@
     <div class="solution">
       <h2>The Solution — Meet Gitty</h2>
       <p>
-        Gitty is a voice-activated terminal built with Electron and Node.js.  
-        It listens, understands, and executes your Git commands safely.  
+        Gitty is a voice-activated terminal built with Electron and Node.js.
+        It listens, understands, and executes your Git commands safely.
         You speak it. It does it — no typos, no fear.
       </p>
-      <a href="#flow" class="btn">See How It Works</a>
     </div>
+    <a href="#flow" class="btn next-btn">Next ↓</a>
   </section>
 
   <!-- FLOW -->
@@ -256,11 +272,12 @@
       <div class="flow-steps">
         <p>1️⃣ Open <strong>Gitty</strong></p>
         <p>2️⃣ Press <strong>Ctrl + Enter</strong></p>
-        <p>3️⃣ Gitty shows the command and sums it up in one line </p>
+        <p>3️⃣ Gitty shows the command and sums it up in one line</p>
         <p>4️⃣ Gitty shows the command</p>
         <p>5️⃣ Approve the Action ✅</p>
       </div>
     </div>
+    <a href="#stack" class="btn next-btn">Next ↓</a>
   </section>
 
   <!-- TECH STACK -->
@@ -268,16 +285,14 @@
     <div class="tech-stack">
       <h2>🧩 Tech Stack</h2>
       <div class="stack-list">
-        <div class="stack-item">NodeJS</div>
-        <div class="stack-item">TypeScript</div>
-        <div class="stack-item">Vosk</div>
-        <div class="stack-item">Groq</div>
-        <div class="stack-item">HTML</div>
-        <div class="stack-item">Electron</div>
-        <div class="stack-item">Vite</div>
-        <div class="stack-item">React</div>
+        <div class="stack-item">NodeJS</div><div class="stack-item">TypeScript</div>
+        <div class="stack-item">Vosk</div><div class="stack-item">Groq</div>
+        <div class="stack-item">HTML</div><div class="stack-item">Electron</div>
+        <div class="stack-item">Vite</div><div class="stack-item">React</div>
       </div>
+      <div class="team">👨‍💻 Built by Paurav Hosur Param, Vivek Reddy Baddam, Abhay Anoop C, and Daniaal Tahir Mahmood</div>
     </div>
+    <a href="#top" class="btn next-btn">Back to Top ↑</a>
   </section>
 
   <footer>
