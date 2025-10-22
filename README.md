@@ -166,6 +166,7 @@ The packaged app will appear in `/dist`.
 **Paurav Hosur Param**
 **Abhay Anoop C**
 **Vivek Reddy**
+**Daniaal Tahir Mahmood**
 
 ---
 
