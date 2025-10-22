@@ -5,6 +5,10 @@ import "xterm/css/xterm.css";
 import CommandConfirmationOverlay from "./CommandConfirmationOverlay";
 import { createModel } from "vosk-browser";
 import { inferCommand } from "../lib/groq";
+import {
+	wakeWordController,
+	type WakeWordDetection,
+} from "../lib/wakewordPorcupine";
 
 function splitArgs(input: string): string[] {
 	const out: string[] = [];
@@ -42,6 +46,12 @@ export default function TerminalView() {
 	const voskModelRef = useRef<any>(null);
 	const voskRecognizerRef = useRef<any>(null);
 
+	// Wake word state
+	const [wakeWordArmed, setWakeWordArmed] = useState(false);
+	const [wakeWordStatus, setWakeWordStatus] = useState("idle");
+	const chimeAudioRef = useRef<HTMLAudioElement | null>(null);
+	const startListeningRef = useRef<(() => void) | null>(null);
+
 	// Use refs to avoid stale closures in terminal callbacks
 	const pendingCommandRef = useRef<string | null>(null);
 
@@ -64,21 +74,41 @@ export default function TerminalView() {
 	};
 
 	// Handle command confirmation
-	const handleConfirm = () => {
+	const handleConfirm = async () => {
 		if (pendingCommand) {
 			executeCommand(pendingCommand);
 			setPendingCommand(null);
 			pendingCommandRef.current = null;
+
+			// Re-arm wake word if it was armed
+			if (wakeWordArmed) {
+				console.log("🔄 Re-arming wake word after command confirmation");
+				try {
+					await wakeWordController.startWakeword();
+				} catch (error) {
+					console.error("❌ Failed to re-arm wake word:", error);
+				}
+			}
 		}
 	};
 
 	// Handle command cancellation
-	const handleCancel = () => {
+	const handleCancel = async () => {
 		console.log("❌ Command cancelled by user");
 		writeln("Command cancelled.");
 		prompt();
 		setPendingCommand(null);
 		pendingCommandRef.current = null;
+
+		// Re-arm wake word if it was armed
+		if (wakeWordArmed) {
+			console.log("🔄 Re-arming wake word after command cancellation");
+			try {
+				await wakeWordController.startWakeword();
+			} catch (error) {
+				console.error("❌ Failed to re-arm wake word:", error);
+			}
+		}
 	};
 
 	// Initialize Vosk Model (offline speech recognition)
@@ -102,6 +132,9 @@ export default function TerminalView() {
 	// Start Vosk speech recognition with VAD (Voice Activity Detection)
 	const startListening = useCallback(async () => {
 		if (isListening) return;
+
+		// Store whether wake word was armed before we started listening
+		const wasWakeWordArmed = wakeWordArmed;
 
 		try {
 			const model = await initVoskModel();
@@ -195,6 +228,18 @@ export default function TerminalView() {
 									if (!repoSnapshot.inRepo) {
 										write("\r\n[!] Not a git repository.\r\n");
 										prompt();
+
+										// Re-arm wake word
+										if (wasWakeWordArmed) {
+											console.log(
+												"🔄 Re-arming wake word after non-repo detection"
+											);
+											try {
+												await wakeWordController.startWakeword();
+											} catch (error) {
+												console.error("❌ Failed to re-arm wake word:", error);
+											}
+										}
 										return;
 									}
 
@@ -213,6 +258,16 @@ export default function TerminalView() {
 									if (llmResult.needs_clarification) {
 										write(`\r\n❓ ${llmResult.clarification_question}\r\n`);
 										prompt();
+
+										// Re-arm wake word since no command to confirm
+										if (wasWakeWordArmed) {
+											console.log("🔄 Re-arming wake word after clarification");
+											try {
+												await wakeWordController.startWakeword();
+											} catch (error) {
+												console.error("❌ Failed to re-arm wake word:", error);
+											}
+										}
 									} else {
 										write(`\r\n💡 ${llmResult.explanation}\r\n`);
 										// Extract git subcommand (remove "git " prefix if present)
@@ -233,10 +288,33 @@ export default function TerminalView() {
 										}\r\n`
 									);
 									prompt();
+
+									// Re-arm wake word after error
+									if (wasWakeWordArmed) {
+										console.log("🔄 Re-arming wake word after LLM error");
+										try {
+											await wakeWordController.startWakeword();
+										} catch (rearmError) {
+											console.error(
+												"❌ Failed to re-arm wake word:",
+												rearmError
+											);
+										}
+									}
 								}
 							} else {
 								write("\r\x1b[K\r\n⚠️  No speech detected.\r\n");
 								prompt();
+
+								// Re-arm wake word if no speech detected
+								if (wasWakeWordArmed) {
+									console.log("🔄 Re-arming wake word after no speech");
+									try {
+										await wakeWordController.startWakeword();
+									} catch (error) {
+										console.error("❌ Failed to re-arm wake word:", error);
+									}
+								}
 							}
 						}, SILENCE_DURATION);
 					}
@@ -270,6 +348,11 @@ export default function TerminalView() {
 		}
 	}, [isListening, learningMode]);
 
+	// Update the ref whenever startListening changes
+	useEffect(() => {
+		startListeningRef.current = startListening;
+	}, [startListening]);
+
 	// Stop Vosk speech recognition
 	const stopListening = useCallback(() => {
 		if (voskRecognizerRef.current) {
@@ -278,6 +361,109 @@ export default function TerminalView() {
 		}
 		setIsListening(false);
 	}, []);
+
+	// Initialize wake word detector
+	const initWakeWord = useCallback(async () => {
+		try {
+			// Get access key from environment variable
+			const accessKey = import.meta.env.VITE_PORCUPINE_ACCESS_KEY;
+
+			if (!accessKey) {
+				console.warn("⚠️  VITE_PORCUPINE_ACCESS_KEY not found in environment");
+				write(
+					"\r\n⚠️  Wake word disabled: Missing access key. Set VITE_PORCUPINE_ACCESS_KEY in .env\r\n"
+				);
+				return false;
+			}
+
+			await wakeWordController.initialize({
+				accessKey,
+				keywordPath: "/porcupine/hey_gitty.ppn",
+				modelPath: "/porcupine/porcupine_params.pv",
+				sensitivity: 0.7,
+			});
+
+			// Load chime audio
+			if (!chimeAudioRef.current) {
+				chimeAudioRef.current = new Audio("/sounds/wake.mp3");
+				chimeAudioRef.current.volume = 0.5;
+			}
+
+			return true;
+		} catch (error) {
+			console.error("❌ Failed to initialize wake word:", error);
+			write(
+				`\r\n⚠️  Wake word disabled: ${
+					error instanceof Error ? error.message : "Unknown error"
+				}\r\n`
+			);
+			write(
+				"\r\n   You can still use Ctrl+Enter to activate voice commands.\r\n"
+			);
+			return false;
+		}
+	}, []);
+
+	// Toggle wake word detection
+	const toggleWakeWord = useCallback(async () => {
+		if (wakeWordArmed) {
+			// Disarm
+			await wakeWordController.stopWakeword();
+			setWakeWordArmed(false);
+			setWakeWordStatus("idle");
+			write("\r\n🔇 Wake word disarmed\r\n");
+			prompt();
+		} else {
+			// Arm
+			const initialized = await initWakeWord();
+			if (!initialized) return;
+
+			try {
+				await wakeWordController.startWakeword();
+				setWakeWordArmed(true);
+				setWakeWordStatus("armed");
+				write("\r\n🎤 Wake word armed - say 'Hey Gitty' to activate\r\n");
+				prompt();
+			} catch (error) {
+				console.error("❌ Failed to start wake word:", error);
+				write(
+					`\r\n⚠️  Failed to arm wake word: ${
+						error instanceof Error ? error.message : "Unknown error"
+					}\r\n`
+				);
+				prompt();
+			}
+		}
+	}, [wakeWordArmed, initWakeWord]);
+
+	// Handle wake word detection - stable callback using refs
+	const handleWakeWordDetection = useCallback(
+		async (detection: WakeWordDetection) => {
+			console.log("🎯 Wake word detected:", detection);
+
+			// Play chime
+			if (chimeAudioRef.current) {
+				try {
+					chimeAudioRef.current.currentTime = 0;
+					await chimeAudioRef.current.play();
+				} catch (error) {
+					console.error("❌ Failed to play chime:", error);
+				}
+			}
+
+			// Show detection message in terminal
+			const term = termRef.current;
+			if (term) {
+				term.write(`\r\n🎤 "${detection.keyword}" detected!\r\n`);
+			}
+
+			// Trigger the same listening flow as Ctrl+Enter
+			if (startListeningRef.current) {
+				startListeningRef.current();
+			}
+		},
+		[]
+	); // Empty deps - uses refs only
 
 	useEffect(() => {
 		const term = new Terminal({
@@ -366,7 +552,9 @@ export default function TerminalView() {
 				"Ctrl:",
 				e.ctrlKey,
 				"Meta:",
-				e.metaKey
+				e.metaKey,
+				"Shift:",
+				e.shiftKey
 			);
 
 			// Ctrl+Enter to start speech recognition
@@ -380,6 +568,14 @@ export default function TerminalView() {
 					startListening();
 				}
 			}
+
+			// Ctrl+Shift+G to toggle wake word
+			if (e.ctrlKey && e.shiftKey && e.code === "KeyG") {
+				console.log("🎯 Ctrl+Shift+G detected!");
+				e.preventDefault();
+				e.stopPropagation();
+				toggleWakeWord();
+			}
 		};
 
 		console.log("🎧 Keyboard listener attached, isListening:", isListening);
@@ -389,7 +585,17 @@ export default function TerminalView() {
 			console.log("🎧 Keyboard listener removed");
 			window.removeEventListener("keydown", handleKeyDown, true);
 		};
-	}, [isListening, startListening, stopListening]); // Include callbacks in dependencies
+	}, [isListening, startListening, stopListening, toggleWakeWord]); // Include callbacks in dependencies
+
+	// Register wake word detection callback (only once on mount)
+	useEffect(() => {
+		const unsubscribe = wakeWordController.onWake(handleWakeWordDetection);
+		return () => {
+			// Cleanup: unsubscribe callback and stop wake word
+			unsubscribe();
+			wakeWordController.stopWakeword();
+		};
+	}, []); // Empty deps - register only once, handleWakeWordDetection uses refs
 
 	// Cleanup Vosk on unmount
 	useEffect(() => {
@@ -403,6 +609,41 @@ export default function TerminalView() {
 	return (
 		<div style={{ position: "relative", height: "100%", background: "#000" }}>
 			<div id="xterm-root" style={{ height: "100%", background: "#000" }} />
+
+			{/* Wake word armed indicator */}
+			{wakeWordArmed && (
+				<div
+					style={{
+						position: "absolute",
+						top: "10px",
+						right: "10px",
+						display: "flex",
+						alignItems: "center",
+						gap: "8px",
+						background: "rgba(0, 100, 0, 0.8)",
+						padding: "8px 12px",
+						borderRadius: "6px",
+						fontSize: "12px",
+						color: "#0f0",
+						fontFamily: "monospace",
+						border: "1px solid #0f0",
+						boxShadow: "0 0 10px rgba(0, 255, 0, 0.3)",
+						zIndex: 100,
+					}}
+				>
+					<span
+						style={{
+							width: "8px",
+							height: "8px",
+							borderRadius: "50%",
+							background: "#0f0",
+							boxShadow: "0 0 8px rgba(0, 255, 0, 0.8)",
+							animation: "pulse 2s ease-in-out infinite",
+						}}
+					/>
+					<span>🎤 "Hey Gitty" armed</span>
+				</div>
+			)}
 
 			{/* Show overlay when there's a pending command */}
 			{pendingCommand && (

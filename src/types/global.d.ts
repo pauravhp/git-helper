@@ -19,6 +19,7 @@ declare global {
 
 	interface ImportMetaEnv {
 		readonly VITE_GROQ_API_KEY: string;
+		readonly VITE_PORCUPINE_ACCESS_KEY?: string;
 	}
 
 	interface ImportMeta {
